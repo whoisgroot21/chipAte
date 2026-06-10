@@ -39,16 +39,16 @@ map_key::proc(keycode: SDL.Scancode) -> u16
 	}
 }
 
-beep_callback::proc "c"(userdata: rawptr, stream: [^]u8, len: i32)
+beep_callback::proc "c" (userdata: rawptr, stream: [^]u8, len: i32)
 {
-    @(static) sample_index: u32 = 0
+    phase := (^u32)(userdata)
     half_period :: 50 // ~440Hz beep at 44100Hz sample rate
 
     for i := 0; i < int(len); i+=1
     {
-        stream[i] = ((sample_index / half_period) % 2)==1 ? 140 : 116
-        //sample_index+=1
-        sample_index = (sample_index + 1) % (half_period*2)
+        stream[i] = ((phase^ / half_period) % 2)==1 ? 140 : 116
+        //phase^+=1
+        phase^ = (phase^ + 1) % (half_period*2)
     }
 
 }
@@ -64,7 +64,8 @@ App::struct
 	
 	window: ^SDL.Window,
 	renderer: ^SDL.Renderer,
-	audio_dev: SDL.AudioDeviceID
+	audio_dev: SDL.AudioDeviceID,
+	audio_phase: u32
 }
 
 
@@ -115,6 +116,7 @@ app_init::proc(app: ^App, rom_path: string) -> bool
 		channels = 1,
 		samples = 512,
 		callback = beep_callback,
+		userdata = &app.audio_phase,
 	}
     app.audio_dev = SDL.OpenAudioDevice(nil, false, &spec_wanted, nil, SDL.AudioAllowChangeFlags{})
 
@@ -289,8 +291,6 @@ main :: proc()
 	//todo
 	//5-quirsk also
 	//fix quirks
-	//7-beep nope
-	//fix beep noise
 	if ok := app_init(&app, test_roms[6]); !ok{
 		return
 	}
