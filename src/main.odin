@@ -39,6 +39,20 @@ map_key::proc(keycode: SDL.Scancode) -> u16
 	}
 }
 
+beep_callback::proc "c"(userdata: rawptr, stream: [^]u8, len: i32)
+{
+    @(static) sample_index: u32 = 0
+    half_period :: 50 // ~440Hz beep at 44100Hz sample rate
+
+    for i := 0; i < int(len); i+=1
+    {
+        stream[i] = ((sample_index / half_period) % 2)==1 ? 140 : 116
+        //sample_index+=1
+        sample_index = (sample_index + 1) % (half_period*2)
+    }
+
+}
+
 
 
 
@@ -50,6 +64,7 @@ App::struct
 	
 	window: ^SDL.Window,
 	renderer: ^SDL.Renderer,
+	audio_dev: SDL.AudioDeviceID
 }
 
 
@@ -66,8 +81,7 @@ app_init::proc(app: ^App, rom_path: string) -> bool
 
 	//SDL stuff
 
-
-    if SDL.Init({.VIDEO}) != 0 {
+    if SDL.Init({.VIDEO, .AUDIO}) != 0 {
         fmt.println("Error initializing SDL:", SDL.GetError())
         return false
     }
@@ -93,6 +107,23 @@ app_init::proc(app: ^App, rom_path: string) -> bool
     	fmt.println("Error creating renderer:", SDL.GetError())
         return false
     }
+
+
+    spec_wanted := SDL.AudioSpec{
+    	freq = 44100,
+    	format = SDL.AUDIO_U8,
+		channels = 1,
+		samples = 512,
+		callback = beep_callback,
+	}
+    app.audio_dev = SDL.OpenAudioDevice(nil, false, &spec_wanted, nil, SDL.AudioAllowChangeFlags{})
+
+    if app.audio_dev==0{
+    	fmt.println("Error opening AudioDevice:", SDL.GetError())
+        return false
+    }
+
+    SDL.PauseAudioDevice(app.audio_dev, true);
 
     return true
 
@@ -156,6 +187,8 @@ app_run::proc(app: ^App)
         	timer_time -=1/60.0
         	emulator_tick_timers(&app.emu);
         	//buzz
+        	if emulator_should_beep(&app.emu) do SDL.PauseAudioDevice(app.audio_dev, false);
+        	else do SDL.PauseAudioDevice(app.audio_dev, true);
         }
 		
 		if emulator_test_draw_flag(&app.emu)
@@ -258,7 +291,7 @@ main :: proc()
 	//fix quirks
 	//7-beep nope
 	//fix beep noise
-	if ok := app_init(&app, test_roms[4]); !ok{
+	if ok := app_init(&app, test_roms[6]); !ok{
 		return
 	}
 
