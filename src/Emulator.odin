@@ -154,8 +154,18 @@ Z X C V
 */
 
 
+emulator_mode::enum{
+	CHIP8,
+	SUPER_CHIP_LEGACY,
+	SUPER_CHIP_MODERN,
+	XO_CHIP,
+}
+
+
 Emulator::struct
 {
+	mode: emulator_mode,
+
 	PC: u16,
 	SP: u8,
 
@@ -166,6 +176,7 @@ Emulator::struct
 	framebuffer: [DISPLAY_WIDTH*DISPLAY_HEIGHT]b8,//[DISPLAY_WIDTH*DISPLAY_HEIGHT/8]u8// or [DISPLAY_WIDTH*DISPLAY_HEIGHT]b8 //or [DISPLAY_WIDTH*DISPLAY_HEIGHT]u8,
 
 	draw_flag: bool,
+	wating_for_vblank: bool,
 
 	memory: [4096]u8,
 	
@@ -179,8 +190,10 @@ Emulator::struct
 
 }
 
-emulator_init::proc(emu: ^Emulator)
+emulator_init::proc(emu: ^Emulator, mode: emulator_mode)
 {
+	emu.mode = mode
+
 	emu.PC=PROGRAM_MEMORY_START
 
 	emu.SP=0
@@ -191,6 +204,8 @@ emulator_init::proc(emu: ^Emulator)
 
 	emu.framebuffer=false
 	emu.draw_flag=false
+
+	emu.wating_for_vblank=false
 
 	emu.memory=0
 	emu.stack=0
@@ -227,6 +242,8 @@ emulator_load_rom::proc(emu: ^Emulator, rom_path: string) -> os.Error
 
 emulator_step::proc(emu: ^Emulator)
 {
+	if emu.wating_for_vblank do return
+
 	//fetch
 	opcode:=u16(emu.memory[emu.PC]) << 8 | u16(emu.memory[emu.PC+1])
 
@@ -314,17 +331,17 @@ emulator_step::proc(emu: ^Emulator)
 			//8xy1 - OR Vx, Vy
 			case 0x1:
 				emu.V[x]|=emu.V[y]
-				//Q1 emu.V[0xF]=0
+				if emu.mode==.CHIP8 do emu.V[0xF]=0
 
 			// 8xy2 - AND Vx, Vy
 			case 0x2:
 				emu.V[x]&=emu.V[y]
-				//Q1 emu.V[0xF]=0
+				if emu.mode==.CHIP8 do emu.V[0xF]=0
 
 			//8xy3 - XOR Vx, Vy
 			case 0x3:
 				emu.V[x] ~= emu.V[y]
-				//Q1 emu.V[0xF]=0
+				if emu.mode==.CHIP8 do emu.V[0xF]=0
 
 			//8xy4 - ADD Vx, Vy
 			case 0x4:
@@ -341,6 +358,7 @@ emulator_step::proc(emu: ^Emulator)
 
 			//8xy6 - SHR Vx {, Vy}
 			case 0x6:
+				if emu.mode==.CHIP8 do emu.V[x]=emu.V[y]
 				vf: u8 = (emu.V[x] & 1)
 				emu.V[x] >>= 1
 				emu.V[0xF]=vf
@@ -353,6 +371,7 @@ emulator_step::proc(emu: ^Emulator)
 
 			//8xyE - SHL Vx {, Vy}
 			case 0xE:
+				if emu.mode==.CHIP8 do emu.V[x]=emu.V[y]
 				vf: u8 = (emu.V[x]>>7)
 				emu.V[x] <<= 1
 				emu.V[0xF]=vf
@@ -385,32 +404,38 @@ emulator_step::proc(emu: ^Emulator)
 		y:=(opcode & 0x00F0)>>4
 		size:=int(opcode & 0x000F)
 
+		px:=int(emu.V[x])%DISPLAY_WIDTH
+		py:=int(emu.V[y])%DISPLAY_HEIGHT
+
         collision := false
         for i:=0;i<size;i+=1
         {
             sprite_byte:=emu.memory[int(emu.I)+i]
             
+            if py+i>=DISPLAY_HEIGHT do break
+
             for j in uint(0)..<8
             {
-                if (sprite_byte&(128>>j))== 0 do continue
+            	if (sprite_byte&(128>>j))==0 do continue
+				
+				if px+int(j)>=DISPLAY_WIDTH do break
+				idx:=((py+i)*DISPLAY_WIDTH)+(px+int(j))
 
-                if ((int(emu.V[y])+i)*DISPLAY_WIDTH+int(emu.V[x])+int(j))<(DISPLAY_WIDTH*DISPLAY_HEIGHT)
-                {
-                	emu.framebuffer[(int(emu.V[y])+i)*DISPLAY_WIDTH+int(emu.V[x])+int(j)]~=true
 
-            		if !collision && emu.framebuffer[(int(emu.V[y])+i)*DISPLAY_WIDTH+int(emu.V[x])]{
-            			collision=true
-            		}
-            	}
+        		if !collision && emu.framebuffer[idx] do collision=true
+
+        		emu.framebuffer[idx]~=true
 
             }
-
 
         }
 
         emu.V[0xF] = u8(collision)
 
         emu.draw_flag=true
+
+        if emu.mode==.CHIP8 || emu.mode==.SUPER_CHIP_LEGACY do emu.wating_for_vblank=true
+
 
 	case 0xE:
 		x:=(opcode & 0x0F00)>>8
@@ -466,12 +491,12 @@ emulator_step::proc(emu: ^Emulator)
 			//Fx55 - LD [I], Vx
 			case 0x55:
 				for i:=0; i<=int(x); i+=1 do emu.memory[int(emu.I)+i] = emu.V[i]
-				//Q2
+				if emu.mode==.CHIP8 do emu.I+=x+1
 		
 			//Fx65 - LD Vx, [I]
 			case 0x65:
 				for i:=0; i<=int(x); i+=1 do emu.V[i] = emu.memory[int(emu.I)+i]
-				//Q2
+				if emu.mode==.CHIP8 do emu.I+=x+1
 
 			case:
 				//error invalid opcode
@@ -490,12 +515,13 @@ emulator_should_beep::proc(emu: ^Emulator) ->bool
 	else do return false
 }
 
-emulator_tick_timers::proc(emu: ^Emulator)
+emulator_tick_60hz_clock::proc(emu: ^Emulator)
 {
 	if emu.delay_timer>0 do emu.delay_timer-=1
 
 	if emu.sound_timer>0 do emu.sound_timer-=1
-	//buzz
+
+	emu.wating_for_vblank=false
 }
 
 

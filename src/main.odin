@@ -74,7 +74,7 @@ app_init::proc(app: ^App, rom_path: string) -> bool
 	app.running=false
 
 	//initialize the emulator
-	emulator_init(&app.emu)
+	emulator_init(&app.emu, emulator_mode.CHIP8)
 
 	//load the rom
 	emulator_load_rom(&app.emu, rom_path)
@@ -187,7 +187,7 @@ app_run::proc(app: ^App)
         for timer_time>=1/60.0
         {
         	timer_time -=1/60.0
-        	emulator_tick_timers(&app.emu);
+        	emulator_tick_60hz_clock(&app.emu);
         	//buzz
         	if emulator_should_beep(&app.emu) do SDL.PauseAudioDevice(app.audio_dev, false);
         	else do SDL.PauseAudioDevice(app.audio_dev, true);
@@ -261,13 +261,12 @@ app_destroy::proc(app: ^App)
 
 main :: proc()
 {
-	/*
 	if len(os.args)<=1
 	{
 		fmt.println("Error: Missing or invalid ROM path.\nUsage: emulator <path_to_rom>");
 		return
 	}
-	*/
+
 	rom_path := strings.join(os.args[1:], " ")
 	
 
@@ -288,10 +287,7 @@ main :: proc()
 
 	app: App
 
-	//todo
-	//5-quirsk also
-	//fix quirks
-	if ok := app_init(&app, test_roms[6]); !ok{
+	if ok := app_init(&app, rom_path); !ok{
 		return
 	}
 
