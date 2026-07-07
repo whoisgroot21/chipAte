@@ -94,7 +94,7 @@ app_init::proc(app: ^App, rom_path: string) -> bool
         SDL.WINDOWPOS_CENTERED,
         SDL.WINDOWPOS_CENTERED,
         DISPLAY_WIDTH*SCALE, DISPLAY_HEIGHT*SCALE,
-        {.SHOWN, .RESIZABLE},
+        {.SHOWN},
     )
 
     if app.window == nil {
