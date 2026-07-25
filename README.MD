@@ -1,4 +1,4 @@
-Sorry for the chatgpt ass name
+Sorry for the garbage name
 But this is yet another chip-8 emulator I made in the odin programmign lang
 
 
