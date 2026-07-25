@@ -1,5 +1,7 @@
+chipAte
+
 Sorry for the garbage name
-But this is yet another chip-8 emulator I made in the odin programmign lang
+But this is yet another chip-8 emulator I made in the odin programmign language
 
 
 I have used Cowgod's chip8 reference to implement this emulator
