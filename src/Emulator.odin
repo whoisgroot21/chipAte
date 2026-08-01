@@ -264,6 +264,7 @@ emulator_step::proc(emu: ^Emulator)
 		//00E0 - CLS
 		case 0x00E0:
 			emu.framebuffer=false
+			//emu.draw_flag=true
 
 		//00EE - RET		
 		case 0x00EE:
