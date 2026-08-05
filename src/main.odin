@@ -180,7 +180,23 @@ app_run::proc(app: ^App)
         for step_time>=1/600.0
         {
         	step_time -=1/600.0
-			emulator_step(&app.emu)
+        	
+			if(!emulator_step(&app.emu))
+			{
+				fmt.println("Fatal Error in Emulator Step")
+				return
+			}
+			//OR
+			/*
+			err := emulator_step(&app.emu)
+			if(err)
+			{
+				fmt.println("Error: Failed to Execute Opcode %d", err)
+				return
+			}
+        	*/
+
+
         }
       	
 

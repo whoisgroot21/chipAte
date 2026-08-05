@@ -240,9 +240,10 @@ emulator_load_rom::proc(emu: ^Emulator, rom_path: string) -> os.Error
 }
 
 
-emulator_step::proc(emu: ^Emulator)
+
+emulator_step::proc(emu: ^Emulator) -> bool //better error handling would be to return 0 if success and the opcode if failure
 {
-	if emu.wating_for_vblank do return
+	if emu.wating_for_vblank do return true;
 
 	//fetch
 	opcode:=u16(emu.memory[emu.PC]) << 8 | u16(emu.memory[emu.PC+1])
@@ -500,12 +501,14 @@ emulator_step::proc(emu: ^Emulator)
 				if emu.mode==.CHIP8 do emu.I+=x+1
 
 			case:
-				//error invalid opcode
+				//invalid opcode
+				return false;
 
 		}
 
 	}
 
+	return true;
 
 }
 
