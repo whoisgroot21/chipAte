@@ -8,9 +8,11 @@ import "core:strings"
 
 main :: proc()
 {
-
-	//IMPROVE address/2 is bad and can lead to errors, do something else
 	
+	//PROBLEM: address/2 can be an issue in some specially stupid cases
+	//but going by index instead of address can also be an issue in some specially stupid cases
+	//idk
+
 	//usage-
 	//1) ./disassembler <rom_path> -> prints it out to stdout
 	//2) ./disassembler <rom_path> -o <output_file_path>-> writes it to a file
@@ -35,9 +37,6 @@ main :: proc()
 	}
 	if  !output_to_file do rom_path = strings.join(os.args[1:], " ")
 
-	//for testing
-	//rom_path := "./roms/test-roms/1-chip8-logo.ch8"
-	//rom_path := "./roms/custom-roms/chipAte-logo.ch8"
 
 	rom_data, err := os.read_entire_file_from_path(rom_path, context.allocator)
 	
@@ -57,7 +56,6 @@ main :: proc()
 	defer delete(labels)
 
 	START_ADDRESS::0x200
-	//END_ADDRESS::0xFFFF//or FFF //todo replace all the magical ways to exit the loop with this
 
 
 	address : u16
@@ -75,7 +73,7 @@ main :: proc()
 	{
 		address=address_to_visit[address_to_visit_ptr]
 		address_to_visit_ptr-=1
-		for address<u16(len(rom_data))
+		inner_loop: for address<u16(len(rom_data))
 		{
 			opcode := u16(rom_data[address])<<8 | u16(rom_data[address+1])
 
@@ -115,39 +113,37 @@ main :: proc()
 					labels[opcode & 0x0FFF]=len(labels)+1
 				}
 				output_data[address/2] = fmt.tprintf("JP loc_%2X", labels[opcode & 0x0FFF])
-				if address==((opcode & 0x0FFF)-START_ADDRESS) do address=(0xFFFF-2)
+				if address==((opcode & 0x0FFF)-START_ADDRESS) do break inner_loop
 				else do address = (opcode & 0x0FFF)-START_ADDRESS
 				
 			//2nnn - CALL addr
 			case 0x2:
+				//FUCKUP HERE
+				//testing
+				//broken
+				//if output_data[address/2]!="" do break inner_loop
+
+
 				if _, ok := labels[opcode & 0x0FFF]; !ok
 				{
 					labels[opcode & 0x0FFF]=len(labels)+1
 				}
 				output_data[address/2] = fmt.tprintf("CALL loc_%2X", labels[opcode & 0x0FFF])
 				stack_ptr+=1
-				call_stack[stack_ptr]=opcode & 0x0FFF
-				address = (opcode & 0x0FFF)-START_ADDRESS
+				call_stack[stack_ptr] = opcode & 0x0FFF
+				address = (opcode & 0x0FFF) - START_ADDRESS
 				
 
 			//3xkk - SE Vx byte
 			case 0x3:
-				if output_data[address/2]!=""
-				{
-					address=0xFFFF-2
-					continue
-				}
+				if output_data[address/2]!="" do break inner_loop
 				address_to_visit_ptr+=1
 				address_to_visit[address_to_visit_ptr]=address+4
 				output_data[address/2] = fmt.tprintf("SE V%d 0x%2X", (opcode&0x0F00)>>8, (opcode & 0x00FF))
 
 			//4xkk - SNE Vx byte
 			case 0x4:
-				if output_data[address/2]!=""
-				{
-					address=0xFFFF-2
-					continue
-				}
+				if output_data[address/2]!="" do break inner_loop
 				address_to_visit_ptr+=1
 				address_to_visit[address_to_visit_ptr]=address+4
 				output_data[address/2] = fmt.tprintf("SNE V%d 0x%2X", (opcode&0x0F00)>>8, (opcode & 0x00FF))
@@ -155,11 +151,7 @@ main :: proc()
 
 			//5xy0 - SE Vx Vy
 			case 0x5:
-				if output_data[address/2]!=""
-				{
-					address=0xFFFF-2
-					continue
-				}
+				if output_data[address/2]!="" do break inner_loop
 				address_to_visit_ptr+=1
 				address_to_visit[address_to_visit_ptr]=address+4
 				output_data[address/2] = fmt.tprintf("SE V%d V%d", (opcode&0x0F00)>>8, (opcode&0x00F0)>>8)
@@ -339,6 +331,8 @@ main :: proc()
 			}
 			
 
+			//for debugging
+			//fmt.printf("%3X: %s\n", address, output_data[address/2])
 			
 			address+=2
 		}

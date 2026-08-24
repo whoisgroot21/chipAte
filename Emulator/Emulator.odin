@@ -12,10 +12,7 @@ DISPLAY_WIDTH::64
 DISPLAY_HEIGHT::32
 
 
-TIMER_FREQUENCY::60
-
-//EXECUTION_FREQUENCY::600 //can vary configured from outside
-
+TIMER_FREQUENCY::60.0
 
 PROGRAM_MEMORY_START::0x200
 
@@ -139,22 +136,6 @@ FONT_SPRITES : [16*5]u8 = {
 }
 
 
-/*
-keys
-
-1 2 3 C
-4 5 6 D
-7 8 9 E
-A 0 B F
-
-
-1 2 3 4
-Q W E R
-A S D F
-Z X C V
-
-*/
-
 
 emulator_mode::enum{
 	CHIP8,
@@ -238,7 +219,7 @@ emulator_load_rom::proc(emu: ^Emulator, rom_path: string) -> os.Error
 	defer delete(data)
 
 	copy(emu.memory[PROGRAM_MEMORY_START:], data)
-	
+
 	return nil
 
 }
@@ -252,7 +233,7 @@ emulator_step::proc(emu: ^Emulator) -> bool //better error handling would be to 
 	if (emu.PC+1)>=MEMORY_SIZE
 	{
 		fmt.println("Error: PC exceeded valid memory range.");
-		return false;
+		return false
 	}
 
 	//fetch
@@ -261,8 +242,9 @@ emulator_step::proc(emu: ^Emulator) -> bool //better error handling would be to 
 	//step
 	emu.PC+=2
 
-	
+	//for debugging
 	//fmt.printf("%X: %X\n", emu.PC, opcode)
+
 	//debugging
 	//fmt.printf("%X\n", opcode)
 	/*if emu.debug_mode {
@@ -322,6 +304,9 @@ emulator_step::proc(emu: ^Emulator) -> bool //better error handling would be to 
 
 	//5xy0 - SE Vx, Vy
 	case 0x5:
+		//invalid opcode
+		if (opcode & 0xF)!=0 do return false
+
 		x:=(opcode & 0x0F00)>>8
 		y:=(opcode & 0x00F0)>>4
 		if emu.V[x]==emu.V[y] do emu.PC+=2
@@ -395,11 +380,18 @@ emulator_step::proc(emu: ^Emulator) -> bool //better error handling would be to 
 				vf: u8 = (emu.V[x]>>7)
 				emu.V[x] <<= 1
 				emu.V[0xF]=vf
+
+			case:
+				//invalid opcode
+				return false
 			
 		}
 
 	//9xy0 - SNE Vx, Vy
 	case 0x9:
+		//invalid opcode
+		if (opcode & 0xF)!=0 do return false
+
 		x:=(opcode & 0x0F00)>>8
 		y:=(opcode & 0x00F0)>>4
 
@@ -469,6 +461,10 @@ emulator_step::proc(emu: ^Emulator) -> bool //better error handling would be to 
 			case 0xA1:
 				if (emu.keys&(1<<emu.V[x]))==0 do emu.PC+=2
 
+			case:
+				//invalid opcode
+				return false
+
 		}
 
 	case 0xF:
@@ -518,9 +514,9 @@ emulator_step::proc(emu: ^Emulator) -> bool //better error handling would be to 
 				for i:=0; i<=int(x); i+=1 do emu.V[i] = emu.memory[int(emu.I)+i]
 				if emu.mode==.CHIP8 do emu.I+=x+1
 
-			case:
-				//invalid opcode
-				return false;
+			//invalid opcode
+			case:	
+				return false
 
 		}
 

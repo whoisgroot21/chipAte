@@ -18,6 +18,23 @@ EXECUTION_FREQUENCY::600.0//OR IDK IPS?
 
 
 
+
+/*
+key mapping
+
+1 2 3 C
+4 5 6 D
+7 8 9 E
+A 0 B F
+
+
+1 2 3 4
+Q W E R
+A S D F
+Z X C V
+
+*/
+
 map_key::proc(keycode: SDL.Scancode) -> u16
 {
 	#partial switch keycode {
@@ -173,11 +190,10 @@ app_run::proc(app: ^App)
 
             case .KEYDOWN:
             	if event.key.keysym.scancode == .ESCAPE do app.running = false
-
             	key: u16 = map_key(event.key.keysym.scancode)
             	keys|=key
-            case .KEYUP:
 
+            case .KEYUP:
 				key: u16 = map_key(event.key.keysym.scancode)
             	keys&~=key
 
@@ -191,7 +207,7 @@ app_run::proc(app: ^App)
         	
 			if(!emulator_step(&app.emu))
 			{
-				fmt.println("Fatal Error in Emulator Step")
+				fmt.println("Error: Failed in Emulator Step")
 				return
 			}
 			//OR
