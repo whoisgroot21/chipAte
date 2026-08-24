@@ -1,0 +1,46 @@
+start:
+LD V0 0x0
+LD V1 0x0
+LD I sprite
+LD V2 0x1
+LD V3 0x1
+LD V6 0x8
+
+loop:
+CLS
+DRW V0 V1 8
+
+ADD V0 V2
+ADD V1 V3
+
+
+SNE V0 0
+LD V2 0x1
+SNE V0 0x38
+LD V2 0xFF
+
+
+SNE V1 0
+LD V3 0x1
+SNE V1 0x18
+LD V3 0xFF
+
+
+LD V5 V6
+LD DT V5
+
+wait:
+LD V5 DT
+SE V5 0
+JP wait
+
+
+JP loop
+
+
+
+sprite:
+0x0609
+0x09E9
+0x8F89
+0x89E9

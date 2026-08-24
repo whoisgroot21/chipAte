@@ -6,13 +6,15 @@ import "core:fmt"
 
 
 
+MEMORY_SIZE::4096
+
 DISPLAY_WIDTH::64
 DISPLAY_HEIGHT::32
-SCALE::16
 
 
 TIMER_FREQUENCY::60
-EXECUTION_FREQUENCY::600
+
+//EXECUTION_FREQUENCY::600 //can vary configured from outside
 
 
 PROGRAM_MEMORY_START::0x200
@@ -173,12 +175,12 @@ Emulator::struct
 
 	I: u16,
 
-	framebuffer: [DISPLAY_WIDTH*DISPLAY_HEIGHT]b8,//[DISPLAY_WIDTH*DISPLAY_HEIGHT/8]u8// or [DISPLAY_WIDTH*DISPLAY_HEIGHT]b8 //or [DISPLAY_WIDTH*DISPLAY_HEIGHT]u8,
+	framebuffer: [DISPLAY_WIDTH*DISPLAY_HEIGHT]b8,//could have also been [DISPLAY_WIDTH*DISPLAY_HEIGHT/8]u8// or [DISPLAY_WIDTH*DISPLAY_HEIGHT]b8 //or [DISPLAY_WIDTH*DISPLAY_HEIGHT]u8,
 
 	draw_flag: bool,
 	wating_for_vblank: bool,
 
-	memory: [4096]u8,
+	memory: [MEMORY_SIZE]u8,
 	
 	stack: [16]u16,
 
@@ -187,6 +189,8 @@ Emulator::struct
 
 	delay_timer: u8,
 	sound_timer: u8,
+
+	//debug_mode: bool,
 
 }
 
@@ -227,7 +231,7 @@ emulator_load_rom::proc(emu: ^Emulator, rom_path: string) -> os.Error
 	
 	if err != nil
 	{
-		fmt.println("Failed to read file")
+		fmt.println("Error: Failed to read file")
         return err
 	}
 
@@ -245,14 +249,28 @@ emulator_step::proc(emu: ^Emulator) -> bool //better error handling would be to 
 {
 	if emu.wating_for_vblank do return true;
 
+	if (emu.PC+1)>=MEMORY_SIZE
+	{
+		fmt.println("Error: PC exceeded valid memory range.");
+		return false;
+	}
+
 	//fetch
 	opcode:=u16(emu.memory[emu.PC]) << 8 | u16(emu.memory[emu.PC+1])
 
 	//step
 	emu.PC+=2
 
+	
+	//fmt.printf("%X: %X\n", emu.PC, opcode)
 	//debugging
 	//fmt.printf("%X\n", opcode)
+	/*if emu.debug_mode {
+		fmt.printf("%X\n", opcode)
+		//all detials like address
+	}*/
+	
+
 
 	//decode and execute
 	switch (opcode & 0xF000)>>12
@@ -267,7 +285,7 @@ emulator_step::proc(emu: ^Emulator) -> bool //better error handling would be to 
 			emu.framebuffer=false
 			//emu.draw_flag=true
 
-		//00EE - RET		
+		//00EE - RET
 		case 0x00EE:
 			/*if emu.SP>=16
 				return error

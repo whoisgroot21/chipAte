@@ -9,6 +9,14 @@ import "core:fmt"
 import SDL "vendor:sdl2"
 
 
+//CONFIG
+SCALE::16
+EXECUTION_FREQUENCY::600.0//OR IDK IPS?
+//too lazy to implement these	
+//BG_COLOR::0
+//FG_COLOR::255
+
+
 
 map_key::proc(keycode: SDL.Scancode) -> u16
 {
@@ -177,9 +185,9 @@ app_run::proc(app: ^App)
             }
         }
 
-        for step_time>=1/600.0
+        for step_time>=1/EXECUTION_FREQUENCY
         {
-        	step_time -=1/600.0
+        	step_time -=1/EXECUTION_FREQUENCY
         	
 			if(!emulator_step(&app.emu))
 			{
@@ -199,10 +207,9 @@ app_run::proc(app: ^App)
 
         }
       	
-
-        for timer_time>=1/60.0
+        for timer_time>=1/TIMER_FREQUENCY
         {
-        	timer_time -=1/60.0
+        	timer_time -=1/TIMER_FREQUENCY
         	emulator_tick_60hz_clock(&app.emu);
         	//buzz
         	if emulator_should_beep(&app.emu) do SDL.PauseAudioDevice(app.audio_dev, false);
