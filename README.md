@@ -3,10 +3,10 @@ A chip8 emulator written in Odin.
 
 
 ## About
-The emulator implements the complete original Chip-8 instruction set according to Cowgod's specification.
+The emulator implements the complete Chip-8 architecture according to Cowgod's Technical Reference.
 The emulator was tested using Timendus' chip8 test suite and passes all the tests for the classic chip8.
 
-It started out as a simple chip8 emulator but then I decided to write my own rom on it. I wrote a simple chipAte-logo rom, manually, hex by hex, and since that was so tedious to do so, I wrote an assembler and a disassembler for the machine. Using the new assembler, I also made another chipAte-idle-animation rom for the machine.
+It started out as a simple chip8 emulator but then I decided to write my own rom on it. I wrote a simple chipAte-logo rom, manually, hex by hex, and since that was so tedious to do so, I wrote a very simple assembler and a disassembler for the machine. Using the new assembler, I also made another chipAte-idle-animation rom for the machine.
 
 The emulator uses SDL2 for windowing, rendering, input, etc, while the assembler and disassembler are both cli based apps
 
@@ -104,6 +104,7 @@ A 0 B F | Z X C V
 
 - : for labels
 
+- DB for raw data bytes
 
 ## Future improvements / TODO
 - implement the super-chip-8 opcodes
